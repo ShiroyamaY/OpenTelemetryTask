@@ -1,0 +1,34 @@
+services:
+  store:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: store_final
+    container_name: store_app
+    networks:
+      - caddy
+    labels:
+      caddy: "store.localdev.me"
+      caddy.tls: "internal"
+      caddy.root: "* /var/www/store_app/public"
+      caddy.php_fastcgi: "store_app:9000"
+      caddy.php_fastcgi.root: "/var/www/store_app/public"
+      caddy.try_files: "{path} {path}/index.php index.php"
+      caddy.file_server:
+    volumes:
+      - shared_volume:/var/www/shared
+      - sqlite_data:/var/www/store_app/database/sqlite:rw
+    develop:
+      watch:
+        - action: rebuild
+          path: ./application
+          ignore:
+            - ./application/vendor
+networks:
+  caddy:
+    external: true
+volumes:
+  shared_volume:
+    external: true
+  sqlite_data:
+    driver: local
