@@ -42,7 +42,8 @@ services:
     working_dir: /var/www/admin_app
     volumes:
       - ../application:/var/www/admin_app
-    command: ["composer"]
+    networks:
+      - caddy
 networks:
   caddy:
     external: true
