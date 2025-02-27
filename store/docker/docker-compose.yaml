@@ -1,0 +1,53 @@
+services:
+  store:
+    build:
+      context: ..
+      dockerfile: docker/store/Dockerfile
+      target: store_final
+    container_name: store_app
+    networks:
+      - caddy
+    labels:
+      caddy: "store.localdev.me"
+      caddy.tls: "internal"
+      caddy.root: "* /var/www/store_app/public"
+      caddy.php_fastcgi: "store_app:9000"
+      caddy.php_fastcgi.root: "/var/www/store_app/public"
+      caddy.try_files: "{path} {path}/index.php index.php"
+      caddy.file_server:
+    volumes:
+      - shared_volume:/var/www/shared
+      - sqlite_data:/var/www/store_app/database/sqlite:rw
+    develop:
+      watch:
+        - action: rebuild
+          path: ../application
+          ignore:
+            - application/vendor
+    environment:
+      OTEL_PHP_AUTOLOAD_ENABLED: true
+      OTEL_SERVICE_NAME: "store"
+      OTEL_SERVICE_NAMESPACE: "demo"
+      OTEL_DEPLOYMENT_ENVIRONMENT: "development"
+      OTEL_TRACES_EXPORTER: 'otlp'
+      OTEL_METRICS_EXPORTER: 'otlp'
+      OTEL_LOGS_EXPORTER: 'otlp'
+      OTEL_EXPORTER_OTLP_PROTOCOL: 'grpc'
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel-collector:4317'
+      OTEL_PROPAGATORS: 'baggage,tracecontext'
+  composer:
+    build:
+      context: ..
+      dockerfile: docker/composer/Dockerfile
+    working_dir: /var/www/store_app
+    volumes:
+      - ../application:/var/www/store_app
+    command: ["composer"]
+networks:
+  caddy:
+    external: true
+volumes:
+  shared_volume:
+    external: true
+  sqlite_data:
+    driver: local

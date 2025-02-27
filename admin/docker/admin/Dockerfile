@@ -19,9 +19,13 @@ WORKDIR /var/www/admin_app
 
 COPY --from=vendor /var/www/admin_app/vendor /var/www/admin_app/vendor
 
-COPY --chown=www-data:www-data ./application/ .
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions grpc
+RUN install-php-extensions opentelemetry
 
-COPY --chmod=555 admin_app_boot.sh /admin_app_boot.sh
+COPY --chown=www-data:www-data application/ .
+
+COPY --chmod=555 ./docker /
 
 ENTRYPOINT ["/admin_app_boot.sh"]
 CMD ["php-fpm"]

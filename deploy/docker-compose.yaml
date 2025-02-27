@@ -14,10 +14,90 @@ services:
     restart: unless-stopped
     networks:
       - caddy
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    container_name: otel-collector
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
+    restart: always
+    networks:
+      - caddy
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    labels:
+      caddy: "prometheus.localdev.me"
+      caddy.tls: "internal"
+      caddy.reverse_proxy: "prometheus:9090"
+    networks:
+      - caddy
+    restart: always
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    labels:
+      caddy: "jaeger.localdev.me"
+      caddy.tls: "internal"
+      caddy.reverse_proxy: "jaeger:16686"
+    command:
+      - "--badger.ephemeral=false"
+      - "--badger.directory-key=/badger/data/keys"
+      - "--badger.directory-value=/badger/data/values"
+    environment:
+      - SPAN_STORAGE_TYPE=badger
+    volumes:
+      - jaeger_data:/badger:rw
+    networks:
+      - caddy
+    depends_on:
+      prepare-data-dir:
+        condition: service_completed_successfully
+    restart: always
+  prepare-data-dir:
+    image: alpine
+    command: "chmod -R 777 /badger"
+    volumes:
+      - jaeger_data:/badger
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    labels:
+      caddy: "loki.localdev.me"
+      caddy.tls: "internal"
+      caddy.reverse_proxy: "loki:3100"
+    volumes:
+      - loki_data:/loki
+      - ./config/loki.yaml:/etc/loki/loki-config.yaml
+    networks:
+      - caddy
+    restart: always
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_DASHBOARDS_JSON_PATH=/etc/grafana/provisioning/dashboards
+    volumes:
+      - ./config/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    labels:
+      caddy: "grafana.localdev.me"
+      caddy.tls: "internal"
+      caddy.reverse_proxy: "grafana:3000"
+    restart: always
+    networks:
+      - caddy
 volumes:
   caddy_data: {}
   shared_volume:
     name: shared_volume
+  grafana_data: {}
+  prometheus_data: {}
+  jaeger_data: {}
+  loki_data: {}
 networks:
   caddy:
     name: caddy

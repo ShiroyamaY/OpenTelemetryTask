@@ -10,4 +10,3 @@ php artisan migrate && php artisan config:cache && php artisan route:cache
 chown -R www-data:www-data ./database/sqlite
 
 exec "$@"
-
